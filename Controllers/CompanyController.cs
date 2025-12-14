@@ -160,8 +160,13 @@ public class CompanyController : ControllerBase
     [HttpDelete("{companyId}")]
     public async Task<IActionResult> Delete(int companyId)
     {
-        var c = await _context.Companies.FindAsync(companyId);
+        var c = await _context.Companies
+            .Include(c => c.Employees) 
+            .FirstOrDefaultAsync(c => c.Id == companyId);
+
         if (c == null) return NotFound();
+
+        if (c.Employees.Count != 0) return BadRequest("Cannot delete company because it has assigned employees.");
 
         _context.Companies.Remove(c);
         await _context.SaveChangesAsync();

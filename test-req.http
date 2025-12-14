@@ -1,20 +1,180 @@
-# --- Create a new employee ---
+
+### Get all companies
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies
+Accept: application/json
+
+### Get company by ID
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1
+Accept: application/json
+
+### Create a new company
 ## TEST-EXPECT-STATUS: [201]
-## TEST-HAS-BODY
+POST http://localhost:5051/api/companies
+Content-Type: application/json
+
+{
+  "name": "New Company",
+  "code": "NC01",
+  "leaderId": null
+}
+
+### Update company
+## TEST-EXPECT-STATUS: [204]
+PUT http://localhost:5051/api/companies/1
+Content-Type: application/json
+
+{
+  "name": "Updated Company Name",
+  "code": "UC01",
+  "leaderId": 1
+}
+
+
+
+### Get all divisions of company 1
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions
+Accept: application/json
+
+### Get division by ID
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions/1
+Accept: application/json
+
+### Create division
+## TEST-EXPECT-STATUS: [201]
+POST http://localhost:5051/api/companies/1/divisions
+Content-Type: application/json
+
+{
+  "name": "New Division",
+  "code": "ND01",
+  "leaderId": 1
+}
+
+### Update division
+## TEST-EXPECT-STATUS: [204]
+PUT http://localhost:5051/api/companies/1/divisions/1
+Content-Type: application/json
+
+{
+  "name": "Updated Division Name",
+  "code": "UD01",
+  "leaderId": 2
+}
+
+
+
+
+
+
+### Get all projects of division 1
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions/1/projects
+Accept: application/json
+
+### Get project by ID
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions/1/projects/1
+Accept: application/json
+
+### Create project
+## TEST-EXPECT-STATUS: [201]
+POST http://localhost:5051/api/companies/1/divisions/1/projects
+Content-Type: application/json
+
+{
+  "name": "New Project",
+  "code": "NP01",
+  "leaderId": 3
+}
+
+### Update project
+## TEST-EXPECT-STATUS: [204]
+PUT http://localhost:5051/api/companies/1/divisions/1/projects/1
+Content-Type: application/json
+
+{
+  "name": "Updated Project Name",
+  "code": "UP01",
+  "leaderId": 3
+}
+
+
+
+### Get all departments of project 1
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions/1/projects/1/departments
+Accept: application/json
+
+### Get department by ID
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/divisions/1/projects/1/departments/1
+Accept: application/json
+
+### Create department
+## TEST-EXPECT-STATUS: [201]
+POST http://localhost:5051/api/companies/1/divisions/1/projects/1/departments
+Content-Type: application/json
+
+{
+  "name": "New Department",
+  "code": "ND01",
+  "leaderId": 4
+}
+
+### Update department
+## TEST-EXPECT-STATUS: [204]
+PUT http://localhost:5051/api/companies/1/divisions/1/projects/1/departments/1
+Content-Type: application/json
+
+{
+  "name": "Updated Department Name",
+  "code": "UD01",
+  "leaderId": 4
+}
+
+
+
+
+### Get all employees
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/employees
+Accept: application/json
+
+### Get employee by ID
+## TEST-EXPECT-STATUS: [200]
+GET http://localhost:5051/api/companies/1/employees/1
+Accept: application/json
+
+### Create employee
+## TEST-EXPECT-STATUS: [201]
 POST http://localhost:5051/api/companies/1/employees
 Content-Type: application/json
 
 {
-  "firstName": "John",
-  "lastName": "Doe",
-  "DepartmentId": 1,
-  "Title": "Developer",
-  "Phone": "123456789",
-  "Email": "john.doe@example.com"
+  "title": "Ing.",
+  "firstName": "New",
+  "lastName": "Employee",
+  "phone": "0900123456",
+  "email": "new.employee@example.com",
+  "companyId": 1,
+  "departmentId": 1
 }
 
-# --- Get all employees in company 1 ---
-## TEST-EXPECT-STATUS: [200]
-## TEST-HAS-BODY
-GET http://localhost:5051/api/companies/1/employees
-Accept: application/json
+### Update employee
+## TEST-EXPECT-STATUS: [204]
+PUT http://localhost:5051/api/companies/1/employees/1
+Content-Type: application/json
+
+{
+  "title": "Mgr.",
+  "firstName": "Updated",
+  "lastName": "Employee",
+  "phone": "0900654321",
+  "email": "updated.employee@example.com",
+  "companyId": 1,
+  "departmentId": 1
+}
