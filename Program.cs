@@ -1,6 +1,7 @@
 using Scalar.AspNetCore;
 using firmyAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using firmyAPI.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +10,6 @@ string? connectionString = builder.Configuration.GetConnectionString("DefaultCon
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-// Controllers
-builder.Services.AddControllers();
 
 // db context
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -18,6 +17,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     {
         sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     }));
+
+// Validators
+builder.Services.AddScoped<IEntityValidator, EntityValidator>();
+// Controllers
+builder.Services.AddControllers();
 
 var app = builder.Build();
 

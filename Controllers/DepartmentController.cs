@@ -1,6 +1,8 @@
 using firmyAPI.Data;
 using firmyAPI.DTOs.Department;
+using firmyAPI.DTOs.Employee;
 using firmyAPI.Models;
+using firmyAPI.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,23 +13,19 @@ namespace firmyAPI.Controllers;
 public class DepartmentController : ControllerBase
 {
     private readonly AppDbContext _context;
-    public DepartmentController(AppDbContext context) => _context = context;
+    private readonly IEntityValidator _validator;
 
-    private async Task<bool> ProjectBelongsToDivision(
-        int companyId, int divisionId, int projectId)
+    public DepartmentController(AppDbContext context, IEntityValidator validator)
     {
-        return await _context.Projects.AnyAsync(p =>
-            p.Id == projectId &&
-            p.DivisionId == divisionId &&
-            p.Division.CompanyId == companyId);
+        _context = context;
+        _validator = validator;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetAll(
-        int companyId, int divisionId, int projectId)
+    public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetAll(int companyId, int divisionId, int projectId)
     {
-        if (!await ProjectBelongsToDivision(companyId, divisionId, projectId))
-            return NotFound("Project does not belong to division.");
+        var validation = await _validator.ValidateProject(projectId, divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
         var departments = await _context.Departments
             .Where(d => d.ProjectId == projectId)
@@ -38,9 +36,7 @@ public class DepartmentController : ControllerBase
                 Code = d.Code,
                 ProjectId = d.ProjectId,
                 LeaderId = d.LeaderId,
-                LeaderName = d.Leader != null
-                    ? d.Leader.FirstName + " " + d.Leader.LastName
-                    : null
+                LeaderName = d.Leader != null ? $"{d.Leader.FirstName} {d.Leader.LastName}" : null
             })
             .ToListAsync();
 
@@ -48,13 +44,12 @@ public class DepartmentController : ControllerBase
     }
 
     [HttpGet("{departmentId}")]
-    public async Task<ActionResult<DepartmentDto>> GetById(
-        int companyId, int divisionId, int projectId, int departmentId)
+    public async Task<ActionResult<DepartmentDto>> GetById(int companyId, int divisionId, int projectId, int departmentId)
     {
-        if (!await ProjectBelongsToDivision(companyId, divisionId, projectId))
-            return NotFound("Project does not belong to division.");
+        var validation = await _validator.ValidateDepartment(departmentId, projectId, divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        var department = await _context.Departments
+        var d = await _context.Departments
             .Where(d => d.Id == departmentId && d.ProjectId == projectId)
             .Select(d => new DepartmentDto
             {
@@ -63,25 +58,55 @@ public class DepartmentController : ControllerBase
                 Code = d.Code,
                 ProjectId = d.ProjectId,
                 LeaderId = d.LeaderId,
-                LeaderName = d.Leader != null
-                    ? d.Leader.FirstName + " " + d.Leader.LastName
-                    : null
+                LeaderName = d.Leader != null ? $"{d.Leader.FirstName} {d.Leader.LastName}" : null
             })
             .FirstOrDefaultAsync();
 
-        if (department == null)
-            return NotFound();
+        return Ok(d);
+    }
 
-        return Ok(department);
+    [HttpGet("{departmentId}/employees")]
+    public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEmployees(
+        int companyId,
+        int divisionId,
+        int projectId,
+        int departmentId)
+    {
+        var validation = await _validator.ValidateDepartment(
+            departmentId,
+            projectId,
+            divisionId,
+            companyId);
+
+        if (validation != ValidationResult.Success)
+            return NotFound(validation.ToString());
+
+        var employees = await _context.Employees
+            .Where(e => e.DepartmentId == departmentId && e.CompanyId == companyId)
+            .Select(e => new EmployeeDto
+            {
+                Id = e.Id,
+                Title = e.Title,
+                FirstName = e.FirstName,
+                LastName = e.LastName,
+                Email = e.Email,
+                Phone = e.Phone,
+                CompanyId = e.CompanyId,
+                DepartmentId = e.DepartmentId
+            })
+            .ToListAsync();
+
+        return Ok(employees);
     }
 
     [HttpPost]
-    public async Task<ActionResult<DepartmentDto>> AddDepartment(
-        int companyId, int divisionId, int projectId,
-        [FromBody] CreateDepartmentDto dto)
+    public async Task<ActionResult<DepartmentDto>> AddDepartment(int companyId, int divisionId, int projectId, [FromBody] CreateDepartmentDto dto)
     {
-        if (!await ProjectBelongsToDivision(companyId, divisionId, projectId))
-            return NotFound("Project does not belong to division.");
+        var validation = await _validator.ValidateProject(projectId, divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
+
+        var leaderValidation = await _validator.ValidateLeader(dto.LeaderId, companyId);
+        if (leaderValidation != ValidationResult.Success) return BadRequest(leaderValidation.ToString());
 
         var department = new Department
         {
@@ -108,39 +133,38 @@ public class DepartmentController : ControllerBase
     }
 
     [HttpPut("{departmentId}")]
-    public async Task<IActionResult> Update(
-        int companyId, int divisionId, int projectId, int departmentId,
-        [FromBody] UpdateDepartmentDto dto)
+    public async Task<IActionResult> Update(int companyId, int divisionId, int projectId, int departmentId, [FromBody] UpdateDepartmentDto dto)
     {
-        if (!await ProjectBelongsToDivision(companyId, divisionId, projectId))
-            return NotFound("Project does not belong to division.");
+        var validation = await _validator.ValidateDepartment(departmentId, projectId, divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        var department = await _context.Departments
-            .FirstOrDefaultAsync(d => d.Id == departmentId && d.ProjectId == projectId);
+        var department = await _context.Departments.FindAsync(departmentId);
 
-        if (department == null)
-            return NotFound();
-
+        if (department == null) return NotFound("Department not found.");
+            
         if (!string.IsNullOrWhiteSpace(dto.Name)) department.Name = dto.Name;
         if (!string.IsNullOrWhiteSpace(dto.Code)) department.Code = dto.Code;
-        if (dto.LeaderId.HasValue) department.LeaderId = dto.LeaderId;
+
+        if (dto.LeaderId.HasValue)
+        {
+            var leaderValidation = await _validator.ValidateLeader(dto.LeaderId, companyId);
+            if (leaderValidation != ValidationResult.Success) return BadRequest(leaderValidation.ToString());
+            department.LeaderId = dto.LeaderId;
+        }
 
         await _context.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpDelete("{departmentId}")]
-    public async Task<IActionResult> Delete(
-        int companyId, int divisionId, int projectId, int departmentId)
+    public async Task<IActionResult> Delete(int companyId, int divisionId, int projectId, int departmentId)
     {
-        if (!await ProjectBelongsToDivision(companyId, divisionId, projectId))
-            return NotFound("Project does not belong to division.");
+        var validation = await _validator.ValidateDepartment(departmentId, projectId, divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        var department = await _context.Departments
-            .FirstOrDefaultAsync(d => d.Id == departmentId && d.ProjectId == projectId);
+        var department = await _context.Departments.FindAsync(departmentId);
 
-        if (department == null)
-            return NotFound();
+        if (department == null) return NotFound("Department not found.");
 
         _context.Departments.Remove(department);
         await _context.SaveChangesAsync();

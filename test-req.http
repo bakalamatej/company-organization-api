@@ -1,0 +1,20 @@
+# --- Create a new employee ---
+## TEST-EXPECT-STATUS: [201]
+## TEST-HAS-BODY
+POST http://localhost:5051/api/companies/1/employees
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "DepartmentId": 1,
+  "Title": "Developer",
+  "Phone": "123456789",
+  "Email": "john.doe@example.com"
+}
+
+# --- Get all employees in company 1 ---
+## TEST-EXPECT-STATUS: [200]
+## TEST-HAS-BODY
+GET http://localhost:5051/api/companies/1/employees
+Accept: application/json

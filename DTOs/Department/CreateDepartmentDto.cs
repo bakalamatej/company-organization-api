@@ -10,8 +10,5 @@ public class CreateDepartmentDto
     [Required, MaxLength(50)]
     public string Code { get; set; } = null!;
 
-    [Required]
-    public int ProjectId { get; set; }
-
     public int? LeaderId { get; set; }
 }

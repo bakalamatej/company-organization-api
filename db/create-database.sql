@@ -123,42 +123,52 @@ ON DELETE NO ACTION;
 -- SEED DATA
 -- ================================
 
--- Company
-INSERT INTO Companies (Name, Code)
-VALUES ('Company', 'SF001');
+-- Companies
+INSERT INTO Companies (Name, Code) VALUES ('Company A', 'C001');
+INSERT INTO Companies (Name, Code) VALUES ('Company B', 'C002');
 
--- Division
-INSERT INTO Divisions (Name, Code, CompanyId)
-VALUES ('Development', 'DIV01', 1);
--- Project
-INSERT INTO Projects (Name, Code, DivisionId)
-VALUES ('Project Alpha', 'P001', 1);
+-- Divisions (2 per company)
+INSERT INTO Divisions (Name, Code, CompanyId) VALUES ('Dev Div A1', 'D001', 1);
+INSERT INTO Divisions (Name, Code, CompanyId) VALUES ('QA Div A2', 'D002', 1);
+INSERT INTO Divisions (Name, Code, CompanyId) VALUES ('Dev Div B1', 'D003', 2);
+INSERT INTO Divisions (Name, Code, CompanyId) VALUES ('QA Div B2', 'D004', 2);
 
--- Department
-INSERT INTO Departments (Name, Code, ProjectId)
-VALUES ('Frontend', 'DEP01', 1);
+-- Projects (1 per division)
+INSERT INTO Projects (Name, Code, DivisionId) VALUES ('Project A1', 'P001', 1);
+INSERT INTO Projects (Name, Code, DivisionId) VALUES ('Project A2', 'P002', 2);
+INSERT INTO Projects (Name, Code, DivisionId) VALUES ('Project B1', 'P003', 3);
+INSERT INTO Projects (Name, Code, DivisionId) VALUES ('Project B2', 'P004', 4);
 
--- Employees
-INSERT INTO Employees (Title, FirstName, LastName, Phone, Email, CompanyId, DepartmentId)
-VALUES 
-('Ing.', 'John', 'Smith', '0900123456', 'john.smith@example.com', 1, 1),
-('Mgr.', 'Marry', 'Smith', '0900654321', 'marry.smith@example.com', 1, 1),
-('Bc.', 'Peter', 'Smith', '0900987654', 'peter.smith@example.com', 1, 1),
-('Mgr.', 'Anna', 'Smith', '0900112233', 'anna.smith@example.com', 1, 1);
+-- Departments (1 per project)
+INSERT INTO Departments (Name, Code, ProjectId) VALUES ('Dept A1-1', 'DEP01', 1);
+INSERT INTO Departments (Name, Code, ProjectId) VALUES ('Dept A2-1', 'DEP02', 2);
+INSERT INTO Departments (Name, Code, ProjectId) VALUES ('Dept B1-1', 'DEP03', 3);
+INSERT INTO Departments (Name, Code, ProjectId) VALUES ('Dept B2-1', 'DEP04', 4);
+
+-- Employees (4 per company, rozdelení po 2 do oddelení)
+-- Company A
+INSERT INTO Employees (Title, FirstName, LastName, Phone, Email, CompanyId, DepartmentId) VALUES
+('Mgr.', 'Alice', 'A', '0900123450', 'alice.a@example.com', 1, 1),
+('Ing.', 'Bob', 'A', '0900123451', 'bob.a@example.com', 1, 1),
+('Mgr.', 'Carol', 'A', '0900123452', 'carol.a@example.com', 1, 2),
+('Ing.', 'David', 'A', '0900123453', 'david.a@example.com', 1, 2);
+
+-- Company B
+INSERT INTO Employees (Title, FirstName, LastName, Phone, Email, CompanyId, DepartmentId) VALUES
+('Mgr.', 'Eve', 'B', '0900223450', 'eve.b@example.com', 2, 3),
+('Ing.', 'Frank', 'B', '0900223451', 'frank.b@example.com', 2, 3),
+('Mgr.', 'Grace', 'B', '0900223452', 'grace.b@example.com', 2, 4),
+('Ing.', 'Heidi', 'B', '0900223453', 'heidi.b@example.com', 2, 4);
 
 -- Assign Leaders
-UPDATE Companies
-SET LeaderId = 1
-WHERE Id = 1;
+UPDATE Companies SET LeaderId = 1 WHERE Id = 1;
+UPDATE Companies SET LeaderId = 5 WHERE Id = 2;
 
-UPDATE Divisions
-SET LeaderId = 2 
-WHERE Id = 1;
+UPDATE Divisions SET LeaderId = 2 WHERE Id = 1;
+UPDATE Divisions SET LeaderId = 6 WHERE Id = 3;
 
-UPDATE Projects
-SET LeaderId = 3
-WHERE Id = 1;
+UPDATE Projects SET LeaderId = 3 WHERE Id = 2;
+UPDATE Projects SET LeaderId = 7 WHERE Id = 4;
 
-UPDATE Departments
-SET LeaderId = 4 
-WHERE Id = 1;
+UPDATE Departments SET LeaderId = 4 WHERE Id = 2;
+UPDATE Departments SET LeaderId = 8 WHERE Id = 4;

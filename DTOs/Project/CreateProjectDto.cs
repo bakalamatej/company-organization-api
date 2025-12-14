@@ -10,8 +10,5 @@ public class CreateProjectDto
     [Required, MaxLength(50)]
     public string Code { get; set; } = null!;
 
-    [Required]
-    public int DivisionId { get; set; }
-
     public int? LeaderId { get; set; }
 }

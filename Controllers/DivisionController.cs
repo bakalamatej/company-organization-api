@@ -1,25 +1,31 @@
 using firmyAPI.Data;
+using firmyAPI.DTOs.Department;
 using firmyAPI.DTOs.Division;
 using firmyAPI.Models;
+using firmyAPI.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace firmyAPI.Controllers;
+
 [ApiController]
 [Route("api/companies/{companyId}/divisions")]
 public class DivisionController : ControllerBase
 {
     private readonly AppDbContext _context;
-    public DivisionController(AppDbContext context) => _context = context;
+    private readonly IEntityValidator _validator;
 
-    private async Task<bool> CompanyExists(int companyId)
-        => await _context.Companies.AnyAsync(c => c.Id == companyId);
+    public DivisionController(AppDbContext context, IEntityValidator validator)
+    {
+        _context = context;
+        _validator = validator;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DivisionDto>>> GetAll(int companyId)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateCompany(companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
         var divisions = await _context.Divisions
             .Where(d => d.CompanyId == companyId)
@@ -30,9 +36,7 @@ public class DivisionController : ControllerBase
                 Code = d.Code,
                 CompanyId = d.CompanyId,
                 LeaderId = d.LeaderId,
-                LeaderName = d.Leader != null
-                    ? d.Leader.FirstName + " " + d.Leader.LastName
-                    : null
+                LeaderName = d.Leader != null ? $"{d.Leader.FirstName} {d.Leader.LastName}" : null
             })
             .ToListAsync();
 
@@ -42,10 +46,10 @@ public class DivisionController : ControllerBase
     [HttpGet("{divisionId}")]
     public async Task<ActionResult<DivisionDto>> GetById(int companyId, int divisionId)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateDivision(divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        var division = await _context.Divisions
+        var d = await _context.Divisions
             .Where(d => d.Id == divisionId && d.CompanyId == companyId)
             .Select(d => new DivisionDto
             {
@@ -54,23 +58,48 @@ public class DivisionController : ControllerBase
                 Code = d.Code,
                 CompanyId = d.CompanyId,
                 LeaderId = d.LeaderId,
+                LeaderName = d.Leader != null ? $"{d.Leader.FirstName} {d.Leader.LastName}" : null
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(d);
+    }
+
+    [HttpGet("{divisionId}/departments")]
+    public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetDivisionDepartments(
+        int companyId,
+        int divisionId)
+    {
+        var validation = await _validator.ValidateDivision(divisionId, companyId);
+        if (validation != ValidationResult.Success)
+            return NotFound(validation.ToString());
+
+        var departments = await _context.Departments
+            .Where(d => d.Project.DivisionId == divisionId)
+            .Select(d => new DepartmentDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Code = d.Code,
+                ProjectId = d.ProjectId,
+                LeaderId = d.LeaderId,
                 LeaderName = d.Leader != null
                     ? d.Leader.FirstName + " " + d.Leader.LastName
                     : null
             })
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        if (division == null)
-            return NotFound();
-
-        return Ok(division);
+        return Ok(departments);
     }
 
     [HttpPost]
     public async Task<ActionResult<DivisionDto>> AddDivision(int companyId, [FromBody] CreateDivisionDto dto)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateCompany(companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
+
+        var leaderValidation = await _validator.ValidateLeader(dto.LeaderId, companyId);
+        if (leaderValidation != ValidationResult.Success) return BadRequest(leaderValidation.ToString());
 
         var division = new Division
         {
@@ -99,15 +128,22 @@ public class DivisionController : ControllerBase
     [HttpPut("{divisionId}")]
     public async Task<IActionResult> Update(int companyId, int divisionId, [FromBody] UpdateDivisionDto dto)
     {
-        var division = await _context.Divisions
-            .FirstOrDefaultAsync(d => d.Id == divisionId && d.CompanyId == companyId);
+        var validation = await _validator.ValidateDivision(divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        if (division == null)
-            return NotFound();
+        var division = await _context.Divisions.FindAsync(divisionId);
+
+        if (division == null) return NotFound("Department not found.");
 
         if (!string.IsNullOrWhiteSpace(dto.Name)) division.Name = dto.Name;
         if (!string.IsNullOrWhiteSpace(dto.Code)) division.Code = dto.Code;
-        if (dto.LeaderId.HasValue) division.LeaderId = dto.LeaderId;
+
+        if (dto.LeaderId.HasValue)
+        {
+            var leaderValidation = await _validator.ValidateLeader(dto.LeaderId, companyId);
+            if (leaderValidation != ValidationResult.Success) return BadRequest(leaderValidation.ToString());
+            division.LeaderId = dto.LeaderId;
+        }
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -116,11 +152,12 @@ public class DivisionController : ControllerBase
     [HttpDelete("{divisionId}")]
     public async Task<IActionResult> Delete(int companyId, int divisionId)
     {
-        var division = await _context.Divisions
-            .FirstOrDefaultAsync(d => d.Id == divisionId && d.CompanyId == companyId);
+        var validation = await _validator.ValidateDivision(divisionId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        if (division == null)
-            return NotFound();
+        var division = await _context.Divisions.FindAsync(divisionId);
+
+        if (division == null) return NotFound("Department not found.");
 
         _context.Divisions.Remove(division);
         await _context.SaveChangesAsync();

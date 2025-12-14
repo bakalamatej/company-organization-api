@@ -1,6 +1,7 @@
 using firmyAPI.Data;
 using firmyAPI.DTOs.Employee;
 using firmyAPI.Models;
+using firmyAPI.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,16 +12,19 @@ namespace firmyAPI.Controllers;
 public class EmployeeController : ControllerBase
 {
     private readonly AppDbContext _context;
-    public EmployeeController(AppDbContext context) => _context = context;
+    private readonly IEntityValidator _validator;
 
-    private async Task<bool> CompanyExists(int companyId)
-        => await _context.Companies.AnyAsync(c => c.Id == companyId);
+    public EmployeeController(AppDbContext context, IEntityValidator validator)
+    {
+        _context = context;
+        _validator = validator;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll(int companyId)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateCompany(companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
         var employees = await _context.Employees
             .Where(e => e.CompanyId == companyId)
@@ -44,10 +48,10 @@ public class EmployeeController : ControllerBase
     [HttpGet("{employeeId}")]
     public async Task<ActionResult<EmployeeDto>> GetById(int companyId, int employeeId)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateEmployee(employeeId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        var employee = await _context.Employees
+        var e = await _context.Employees
             .Where(e => e.Id == employeeId && e.CompanyId == companyId)
             .Select(e => new EmployeeDto
             {
@@ -63,17 +67,14 @@ public class EmployeeController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        if (employee == null)
-            return NotFound();
-
-        return Ok(employee);
+        return Ok(e);
     }
 
     [HttpPost]
     public async Task<ActionResult<EmployeeDto>> Create(int companyId, [FromBody] CreateEmployeeDto dto)
     {
-        if (!await CompanyExists(companyId))
-            return NotFound("Company not found.");
+        var validation = await _validator.ValidateCompany(companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
         var employee = new Employee
         {
@@ -110,11 +111,12 @@ public class EmployeeController : ControllerBase
     [HttpPut("{employeeId}")]
     public async Task<IActionResult> Update(int companyId, int employeeId, [FromBody] UpdateEmployeeDto dto)
     {
-        var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.Id == employeeId && e.CompanyId == companyId);
+        var validation = await _validator.ValidateEmployee(employeeId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        if (employee == null)
-            return NotFound();
+        var employee = await _context.Employees.FindAsync(employeeId);
+
+        if (employee == null) return NotFound("Department not found.");
 
         if (!string.IsNullOrWhiteSpace(dto.FirstName)) employee.FirstName = dto.FirstName;
         if (!string.IsNullOrWhiteSpace(dto.LastName)) employee.LastName = dto.LastName;
@@ -130,11 +132,12 @@ public class EmployeeController : ControllerBase
     [HttpDelete("{employeeId}")]
     public async Task<IActionResult> Delete(int companyId, int employeeId)
     {
-        var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.Id == employeeId && e.CompanyId == companyId);
+        var validation = await _validator.ValidateEmployee(employeeId, companyId);
+        if (validation != ValidationResult.Success) return NotFound(validation.ToString());
 
-        if (employee == null)
-            return NotFound();
+        var employee = await _context.Employees.FindAsync(employeeId);
+
+        if (employee == null) return NotFound("Department not found.");
 
         _context.Employees.Remove(employee);
         await _context.SaveChangesAsync();
