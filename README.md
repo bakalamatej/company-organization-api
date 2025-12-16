@@ -8,7 +8,6 @@ REST API for managing a company's organizational structure and keeping track of 
 
 The API allows creating, updating, and deleting all hierarchy nodes, as well as managing employees including assigning leaders.
 
-API Design
 Endpoints are designed in a hierarchical REST style to reflect organizational structure relationships.
 
 ## Technologies Used
